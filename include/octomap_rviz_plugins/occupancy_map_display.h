@@ -73,6 +73,7 @@ protected:
   boost::shared_ptr<message_filters::Subscriber<octomap_msgs::Octomap> > sub_;
 
   unsigned int octree_depth_;
+  double min_ground_z, max_ground_z;
   rviz::IntProperty* tree_depth_property_;
 };
 

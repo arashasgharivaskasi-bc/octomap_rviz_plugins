@@ -41,6 +41,8 @@
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/conversions.h>
 
+#include <math.h>
+
 using namespace rviz;
 
 namespace octomap_rviz_plugin
@@ -107,7 +109,9 @@ void OccupancyMapDisplay::subscribe()
 
       sub_->subscribe(threaded_nh_, topicStr, 5);
       sub_->registerCallback(boost::bind(&OccupancyMapDisplay::handleOctomapBinaryMessage, this, _1));
-
+      
+      threaded_nh_.getParam("/octomap/min_ground_z", min_ground_z);
+      threaded_nh_.getParam("/octomap/max_ground_z", max_ground_z);
     }
   }
   catch (ros::Exception& e)
@@ -182,33 +186,43 @@ void TemplatedOccupancyMapDisplay<OcTreeType>::handleOctomapBinaryMessage(const 
   unsigned int treeDepth = std::min<unsigned int>(octree_depth_, octomap->getTreeDepth());
   for (typename OcTreeType::iterator it = octomap->begin(treeDepth), end = octomap->end(); it != end; ++it)
   {
-    bool occupied = octomap->isNodeOccupied(*it);
-    int intSize = 1 << (octree_depth_ - it.getDepth());
-
-    octomap::OcTreeKey minKey=it.getIndexKey();
-
-    for (int dx = 0; dx < intSize; dx++)
+  
+    double node_z = it.getZ();
+    double node_half_side = pow(it.getSize(), 1/3) / 2;
+    double top_side = node_z + node_half_side;
+    double bottom_side = node_z - node_half_side;
+    
+    if((bottom_side >= min_ground_z && bottom_side <= max_ground_z) ||
+       (top_side >= min_ground_z && top_side <= max_ground_z) ||
+       (bottom_side <= min_ground_z && top_side >= max_ground_z))
     {
-      for (int dy = 0; dy < intSize; dy++)
+      bool occupied = octomap->isNodeOccupied(*it);
+      int intSize = 1 << (octree_depth_ - it.getDepth());
+
+      octomap::OcTreeKey minKey=it.getIndexKey();
+
+      for (int dx = 0; dx < intSize; dx++)
       {
-        int posX = std::max<int>(0, minKey[0] + dx - paddedMinKey[0]);
-        posX>>=ds_shift;
-
-        int posY = std::max<int>(0, minKey[1] + dy - paddedMinKey[1]);
-        posY>>=ds_shift;
-
-        int idx = width * posY + posX;
-
-        if (occupied)
-          occupancy_map->data[idx] = 100;
-        else if (occupancy_map->data[idx] == -1)
+        for (int dy = 0; dy < intSize; dy++)
         {
-          occupancy_map->data[idx] = 0;
-        }
+          int posX = std::max<int>(0, minKey[0] + dx - paddedMinKey[0]);
+          posX>>=ds_shift;
 
+          int posY = std::max<int>(0, minKey[1] + dy - paddedMinKey[1]);
+          posY>>=ds_shift;
+
+          int idx = width * posY + posX;
+
+          if (occupied)
+            occupancy_map->data[idx] = 100;
+          else if (occupancy_map->data[idx] == -1)
+          {
+            occupancy_map->data[idx] = 0;
+          }
+
+        }
       }
     }
-
   }
 
   delete octomap;
