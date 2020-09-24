@@ -71,6 +71,8 @@ protected:
   virtual void handleOctomapBinaryMessage(const octomap_msgs::OctomapConstPtr& msg) = 0;
 
   boost::shared_ptr<message_filters::Subscriber<octomap_msgs::Octomap> > sub_;
+  
+  ros::Publisher occ_map_pub_;
 
   unsigned int octree_depth_;
   double min_ground_z, max_ground_z;

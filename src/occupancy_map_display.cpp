@@ -64,6 +64,8 @@ OccupancyMapDisplay::OccupancyMapDisplay()
                                          "Defines the maximum tree depth",
                                          this,
                                          SLOT (updateTreeDepth() ));
+  
+  occ_map_pub_ = threaded_nh_.advertise<nav_msgs::OccupancyGrid>("occupancy_map_2D", 1, true);
 }
 
 OccupancyMapDisplay::~OccupancyMapDisplay()
@@ -228,6 +230,7 @@ void TemplatedOccupancyMapDisplay<OcTreeType>::handleOctomapBinaryMessage(const 
   delete octomap;
 
   this->incomingMap(occupancy_map);
+  occ_map_pub_.publish(*occupancy_map);
 }
 
 } // namespace rviz
